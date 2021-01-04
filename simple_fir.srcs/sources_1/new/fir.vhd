@@ -48,7 +48,11 @@ architecture Behavioral of fir is
 
 -- type coeff_array is array (0 to 7) of integer range 0 to 255;
 constant reg_size: integer := 8;
+constant filter_order: integer := 7;
+
 type samples_reg is array (0 to reg_size-1) of unsigned(7 downto 0);
+type coeffs_reg is array (0 to filter_order) of unsigned(7 downto 0);
+
 
 begin
 
@@ -56,34 +60,45 @@ process(clk, reset)
      
     -- variable coeffs: coeff_array := (0,0,0,0,0,0,0,0);
     --variable b0: unsigned(7 downto 0) := 8D"0";
-    variable b0: unsigned(7 downto 0) := to_unsigned(0,8);
-    variable b1: unsigned(7 downto 0) := to_unsigned(0,8);
-    variable b2: unsigned(7 downto 0) := to_unsigned(0,8);
-    variable samples: samples_reg := (others => (others => '0'));
+    variable b0: unsigned(7 downto 0) := to_unsigned(1,8);
+    variable b1: unsigned(7 downto 0) := to_unsigned(2,8);
+    variable b2: unsigned(7 downto 0) := to_unsigned(3,8);
+    variable b3: unsigned(7 downto 0) := to_unsigned(4,8);
+    variable b4: unsigned(7 downto 0) := to_unsigned(5,8);
+    variable b5: unsigned(7 downto 0) := to_unsigned(6,8);
+    variable b6: unsigned(7 downto 0) := to_unsigned(7,8);
+    variable b7: unsigned(7 downto 0) := to_unsigned(8,8);
+    
     variable i: integer range 0 to reg_size := 0;
+    
+    variable samples: samples_reg := (others => (others => '0'));
+    variable coeffs: coeffs_reg := (b0,b1,b2,b3,b4,b5,b6,b7);
+    
+    variable data_processed: unsigned(15 downto 0) := (others => '0');
+    
+    
+    
     -- variable reg_element:
     
-    
     -- signal s1 : signed(47 downto 0) := 48D"46137344123";
-    
     
     begin
     
     -- zero the counter
     if load = '0' and start = '0' then
         i := 0;
+        data_processed := (others => '0');
     end if;    
     
     
     if reset = '1' then
         data_out <= (others => '0');
         samples := (others => (others => '0'));
+        data_processed := (others => '0');
         i := 0;            
 
     -- synch part
     elsif rising_edge(clk) and en = '1' then
-    
-
     
         -- loading data
         if load = '1' then
@@ -94,8 +109,11 @@ process(clk, reset)
         
         -- deloading data
         if start = '1' then
-            data_out <= samples(i);
-            i := i+1;     
+            
+        data_processed := samples(i)*coeffs(i);
+        data_out <= data_processed(7 downto 0);
+        i := i+1;
+        
         end if;
             
         -- reset counter
