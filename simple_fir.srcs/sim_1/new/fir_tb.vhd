@@ -17,7 +17,6 @@ architecture bench of fir_tb is
    data_in: in unsigned(7 downto 0);
    data_out: out unsigned(7 downto 0);
    en: in std_logic;
-   load: in std_logic;
    start: in std_logic;
    reset: in std_logic
    );
@@ -27,7 +26,6 @@ architecture bench of fir_tb is
   signal data_in: unsigned(7 downto 0);
   signal data_out: unsigned(7 downto 0);
   signal en: std_logic;
-  signal load: std_logic;
   signal start: std_logic;
   signal reset: std_logic;
 
@@ -40,7 +38,6 @@ begin
                       data_in  => data_in,
                       data_out => data_out,
                       en       => en,
-                      load     => load,
                       start    => start,
                       reset    => reset );                     
 
@@ -51,7 +48,6 @@ begin
 
     reset <= '1';
     en <= '0';
-    load <= '0';
     start <= '0';
     data_in <= (others => '0');        
     wait for 5 ns;
@@ -61,7 +57,8 @@ begin
     wait for 7 ns;
     
     -- Put test bench stimulus code here
-    load <= '1';
+    start <= '1';
+    wait for 30 ns;
     data_in <= "00000001";
     wait for 10 ns;
     data_in <= "00000010";
@@ -72,11 +69,10 @@ begin
     wait for 10 ns;
     data_in <= "00010000";
     wait for 10 ns;
-    load <= '0';
-    
-    wait for 25 ns;
-    start <= '1';
-    wait for 100 ns;
+    data_in <= "00000000";
+    wait for 50 ns;
+    start <= '0';
+    wait for 20 ns;
     
     reset <= '1';
     wait for 5 ns;

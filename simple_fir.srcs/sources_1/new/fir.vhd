@@ -38,7 +38,6 @@ entity fir is
  data_in: in unsigned(7 downto 0);
  data_out: out unsigned(7 downto 0);
  en: in std_logic;
- load: in std_logic;
  start: in std_logic;
  reset: in std_logic
  );
@@ -47,10 +46,10 @@ end fir;
 architecture Behavioral of fir is
 
 -- type coeff_array is array (0 to 7) of integer range 0 to 255;
-constant reg_size: integer := 8;
+-- constant reg_size: integer := 8;
 constant filter_order: integer := 7;
 
-type samples_reg is array (0 to reg_size-1) of unsigned(7 downto 0);
+type samples_reg is array (0 to filter_order) of unsigned(7 downto 0);
 type coeffs_reg is array (0 to filter_order) of unsigned(7 downto 0);
 
 
@@ -69,7 +68,7 @@ process(clk, reset)
     variable b6: unsigned(7 downto 0) := to_unsigned(7,8);
     variable b7: unsigned(7 downto 0) := to_unsigned(8,8);
     
-    variable i: integer range 0 to reg_size-1 := 0;
+    --variable i: integer range 0 to filter_order := 0;
     --variable j: integer range 0 to filter_order := 0;
     
     variable samples: samples_reg := (others => (others => '0'));
@@ -89,7 +88,6 @@ process(clk, reset)
     if reset = '1' then
          data_out <= (others => '0');
          samples := (others => (others => '0'));
-         i := 0;
          data_processed := (others => '0');
             
 
@@ -97,23 +95,28 @@ process(clk, reset)
     elsif rising_edge(clk) then
         if en = '1' then
         
-            -- reset counter after overflow
-            if i = reg_size then i := 0; end if;
-        
-            -- loading samples
-            if load = '1' and start = '0' then    
-                samples(i) := data_in;
-                i := i+1;
+            if start = '1' then
+            
+                -- draw sample in new cycle
+                samples(0) := data_in;
                 
-            -- unloading processed samples
-            elsif load = '0' and start = '1' then
-                data_processed := samples(i)*coeffs(i);
+                -- this has to be cleaned before new cycle or it'll add to previous filter output
+                data_processed := (others => '0');
+                
+                -- actual FIR part
+                for j in 0 to filter_order loop
+                    data_processed := data_processed + samples(j)*coeffs(j);
+                end loop;
+                
+                -- output truncated data
                 data_out <= data_processed(7 downto 0);
-                i := i+1;
                 
-            -- other cases
+                -- shifting sample registers
+                for i in filter_order downto 1 loop
+                    samples(i) := samples(i-1);
+                end loop;
+                
             else
-                i := 0;
                 samples := samples;
                 data_out <= (others => '0');
             end if;
