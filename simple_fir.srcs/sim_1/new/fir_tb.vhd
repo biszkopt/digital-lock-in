@@ -29,7 +29,7 @@ architecture bench of fir_tb is
   signal en: std_logic;
   signal load: std_logic;
   signal start: std_logic;
-  signal reset: std_logic ;
+  signal reset: std_logic;
 
   constant clock_period: time := 10 ns;
   signal stop_the_clock: boolean;
@@ -42,7 +42,7 @@ begin
                       en       => en,
                       load     => load,
                       start    => start,
-                      reset    => reset );
+                      reset    => reset );                     
 
   stimulus: process
   begin
@@ -50,17 +50,18 @@ begin
     -- Put initialisation code here
 
     reset <= '1';
-    en <= '1';
+    en <= '0';
     load <= '0';
     start <= '0';
     data_in <= (others => '0');        
     wait for 5 ns;
     reset <= '0';
-    wait for 10 ns;
+    wait for 100 ns;
+    en <= '1';
+    wait for 7 ns;
     
     -- Put test bench stimulus code here
     load <= '1';
-    wait for 10 ns;
     data_in <= "00000001";
     wait for 10 ns;
     data_in <= "00000010";
@@ -71,15 +72,9 @@ begin
     wait for 10 ns;
     data_in <= "00010000";
     wait for 10 ns;
-    data_in <= "00100000";
-    wait for 10 ns;
-    data_in <= "01000000";
-    wait for 10 ns;
-    data_in <= "10000000";
-    wait for 10 ns;
     load <= '0';
     
-    wait for 10 ns;
+    wait for 25 ns;
     start <= '1';
     wait for 100 ns;
     
