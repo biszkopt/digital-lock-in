@@ -32,11 +32,18 @@ use IEEE.numeric_std.ALL;
 -- any Xilinx leaf cells in this code.
 --library UNISIM;
 --use UNISIM.VComponents.all;
+
 entity fir is
- Port ( 
+ generic (
+ ORDER : integer := 7;
+ INPUT_RESOLUTION : integer := 8;
+ OUTPUT_RESOLUTION : integer := 16
+ );
+ 
+ Port (
  clk: in std_logic;
- data_in: in unsigned(7 downto 0);
- data_out: out unsigned(7 downto 0);
+ data_in: in unsigned(INPUT_RESOLUTION-1 downto 0);
+ data_out: out unsigned(OUTPUT_RESOLUTION-1 downto 0);
  en: in std_logic;
  start: in std_logic;
  reset: in std_logic
@@ -45,9 +52,8 @@ end fir;
 
 architecture Behavioral of fir is
 
--- type coeff_array is array (0 to 7) of integer range 0 to 255;
--- constant reg_size: integer := 8;
-constant filter_order: integer := 7;
+constant filter_order: integer := ORDER; -- to chyba mo¿na usun¹æ skoro korzystam z genericów
+constant max_res: integer := (INPUT_RESOLUTION*2)-1; 
 
 type samples_reg is array (0 to filter_order) of unsigned(7 downto 0);
 type coeffs_reg is array (0 to filter_order) of unsigned(7 downto 0);
@@ -74,7 +80,7 @@ process(clk, reset)
     variable samples: samples_reg := (others => (others => '0'));
     variable coeffs: coeffs_reg := (b0,b1,b2,b3,b4,b5,b6,b7);
     
-    variable data_processed: unsigned(15 downto 0) := (others => '0');
+    variable data_processed: unsigned(max_res downto 0) := (others => '0');
     
        
     
@@ -89,7 +95,6 @@ process(clk, reset)
          data_out <= (others => '0');
          samples := (others => (others => '0'));
          data_processed := (others => '0');
-            
 
     -- synch part
     elsif rising_edge(clk) then
@@ -109,7 +114,7 @@ process(clk, reset)
                 end loop;
                 
                 -- output truncated data
-                data_out <= data_processed(7 downto 0);
+                data_out <= data_processed( max_res downto max_res-OUTPUT_RESOLUTION+1);
                 
                 -- shifting sample registers
                 for i in filter_order downto 1 loop
@@ -117,8 +122,9 @@ process(clk, reset)
                 end loop;
                 
             else
-                samples := samples;
+                samples := (others => (others => '0'));
                 data_out <= (others => '0');
+                
             end if;
             
         end if;
