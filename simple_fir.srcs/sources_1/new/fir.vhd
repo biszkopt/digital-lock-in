@@ -35,58 +35,62 @@ use IEEE.numeric_std.ALL;
 
 entity fir is
  generic (
- ORDER : integer := 7;
- INPUT_RESOLUTION : integer := 8;
- OUTPUT_RESOLUTION : integer := 16
+     FILTER_ORDER : integer := 7;
+     INPUT_RESOLUTION : integer := 8;
+     OUTPUT_RESOLUTION : integer := 15;
+     
+     b0 : integer := 0;
+     b1 : integer := 0;
+     b2 : integer := 0;
+     b3 : integer := 0;
+     b4 : integer := 0;
+     b5 : integer := 0;
+     b6 : integer := 0;
+     b7 : integer := 0
  );
  
  Port (
- clk: in std_logic;
- data_in: in unsigned(INPUT_RESOLUTION-1 downto 0);
- data_out: out unsigned(OUTPUT_RESOLUTION-1 downto 0);
- en: in std_logic;
- start: in std_logic;
- reset: in std_logic
+     clk: in std_logic;
+     data_in: in signed(INPUT_RESOLUTION-1 downto 0);
+     data_out: out signed(OUTPUT_RESOLUTION-1 downto 0);
+     en: in std_logic;
+     start: in std_logic;
+     reset: in std_logic
  );
 end fir;
 
 architecture Behavioral of fir is
 
-constant filter_order: integer := ORDER; -- to chyba mo¿na usun¹æ skoro korzystam z genericów
-constant max_res: integer := (INPUT_RESOLUTION*2)-1; 
+constant max_res: integer := (INPUT_RESOLUTION*2)-1; -- -2 = -1 bo uwzglêdnienie zera -1 bo mno¿enie znaków ale czoœ sie psuje wiemcz jedno '-1' pomijam
+-- jednak totalnie Ÿle zrozumia³em obcinanie s³ów bitowych w kodzie U2
 
-type samples_reg is array (0 to filter_order) of unsigned(7 downto 0);
-type coeffs_reg is array (0 to filter_order) of unsigned(7 downto 0);
+type samples_reg is array (0 to FILTER_ORDER) of signed(INPUT_RESOLUTION-1 downto 0);
+type coeffs_reg is array (0 to FILTER_ORDER) of signed(INPUT_RESOLUTION-1 downto 0);
 
 
 begin
 
 process(clk, reset)
-     
-    -- variable coeffs: coeff_array := (0,0,0,0,0,0,0,0);
-    --variable b0: unsigned(7 downto 0) := 8D"0";
-    variable b0: unsigned(7 downto 0) := to_unsigned(1,8);
-    variable b1: unsigned(7 downto 0) := to_unsigned(2,8);
-    variable b2: unsigned(7 downto 0) := to_unsigned(3,8);
-    variable b3: unsigned(7 downto 0) := to_unsigned(4,8);
-    variable b4: unsigned(7 downto 0) := to_unsigned(5,8);
-    variable b5: unsigned(7 downto 0) := to_unsigned(6,8);
-    variable b6: unsigned(7 downto 0) := to_unsigned(7,8);
-    variable b7: unsigned(7 downto 0) := to_unsigned(8,8);
-    
-    --variable i: integer range 0 to filter_order := 0;
-    --variable j: integer range 0 to filter_order := 0;
     
     variable samples: samples_reg := (others => (others => '0'));
-    variable coeffs: coeffs_reg := (b0,b1,b2,b3,b4,b5,b6,b7);
+    variable coeffs: coeffs_reg := (to_signed(b0,INPUT_RESOLUTION),
+                                    to_signed(b1,INPUT_RESOLUTION),
+                                    to_signed(b2,INPUT_RESOLUTION),
+                                    to_signed(b3,INPUT_RESOLUTION),
+                                    to_signed(b4,INPUT_RESOLUTION),
+                                    to_signed(b5,INPUT_RESOLUTION),
+                                    to_signed(b6,INPUT_RESOLUTION),
+                                    to_signed(b7,INPUT_RESOLUTION)
+                                    );
     
-    variable data_processed: unsigned(max_res downto 0) := (others => '0');
+    variable data_processed: signed(max_res downto 0) := (others => '0'); -- problem: w tej linijce data_processed := data_processed + samples(j)*coeffs(j); czasem jest grubo przekraczany zakres i w sumie 
+    -- i w sumie maksymalny MSB jest p³ywaj¹cy, bo z tego co rozumiem to gdybym zsumowa³ same 1111 w data_processed to móg³bym dostaæ chyba nawet o tyle wiêksz¹ bitów liczbê ile wynosi filter order.
+    -- w ka¿dym razie coœ tu jest mocno nie tak i odbija siê na tym, ¿e jest taka linijka data_out <= data_processed(OUTPUT_RESOLUTION-1 downto 0); a nie z (max_res downto max_res-output_resolution+1)
+    -- trzeba sprawdzic czy arytmetyka sie nasyca czy co sie dzieje
+    -- jak dam (14 downto 0) to wychodz¹ gites liczby
+    -- jak dam (15 downto 1) (czyli tak jak powinno siê obcinaæ) to mi wychodz¹ liczby o po³owê mniejsze. A ZNAK JEST ZACHOWANY!
     
-       
-    
-    
-    -- variable reg_element:
-    
+
     -- signal s1 : signed(47 downto 0) := 48D"46137344123";
     
     begin    
@@ -109,15 +113,15 @@ process(clk, reset)
                 data_processed := (others => '0');
                 
                 -- actual FIR part
-                for j in 0 to filter_order loop
+                for j in 0 to FILTER_ORDER loop
                     data_processed := data_processed + samples(j)*coeffs(j);
                 end loop;
                 
                 -- output truncated data
-                data_out <= data_processed( max_res downto max_res-OUTPUT_RESOLUTION+1);
+                data_out <= data_processed(OUTPUT_RESOLUTION-1 downto 0);
                 
                 -- shifting sample registers
-                for i in filter_order downto 1 loop
+                for i in FILTER_ORDER downto 1 loop
                     samples(i) := samples(i-1);
                 end loop;
                 

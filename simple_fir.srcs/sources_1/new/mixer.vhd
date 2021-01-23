@@ -21,6 +21,7 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.numeric_std.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
@@ -31,15 +32,25 @@ use IEEE.STD_LOGIC_1164.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
+
 entity mixer is
-    Port ( clk : in STD_LOGIC;
-           data_in : in STD_LOGIC;
-           data_out : out STD_LOGIC);
+    Generic ( INPUT_RESOLUTION : integer := 15;
+              OUTPUT_RESOLUTION : integer := 29);
+
+    Port ( data_in : in signed(INPUT_RESOLUTION-1 downto 0);
+           ref_in : in signed(INPUT_RESOLUTION-1 downto 0);
+           data_out : out signed(OUTPUT_RESOLUTION-1 downto 0) );
 end mixer;
 
 architecture basic of mixer is
 
+constant max_res: integer := (INPUT_RESOLUTION*2)-1;
+
+signal data_processed : signed(max_res downto 0);
+
 begin
 
+    data_processed <= data_in * ref_in;
+    data_out <= data_processed(OUTPUT_RESOLUTION-1 downto 0);
 
 end basic;
