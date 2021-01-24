@@ -39,7 +39,9 @@ entity mixer is
 
     Port ( data_in : in signed(INPUT_RESOLUTION-1 downto 0);
            ref_in : in signed(INPUT_RESOLUTION-1 downto 0);
-           data_out : out signed(OUTPUT_RESOLUTION-1 downto 0) );
+           data_out : out signed(OUTPUT_RESOLUTION-1 downto 0);
+           clk : in std_logic
+           );
 end mixer;
 
 architecture basic of mixer is
@@ -52,5 +54,6 @@ begin
 
     data_processed <= data_in * ref_in;
     data_out <= data_processed(OUTPUT_RESOLUTION-1 downto 0);
+
 
 end basic;

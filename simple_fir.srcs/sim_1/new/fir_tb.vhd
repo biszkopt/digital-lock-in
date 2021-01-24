@@ -18,6 +18,9 @@ architecture bench of fir_tb is
 
 component fir
     generic (
+        INPUT_RESOLUTION : integer;
+        OUTPUT_RESOLUTION : integer;
+     
         b0 : integer;
         b1 : integer;
         b2 : integer;
@@ -29,8 +32,8 @@ component fir
     );
     Port ( 
         clk: in std_logic;
-        data_in: in signed(7 downto 0);
-        data_out: out signed(14 downto 0);
+        data_in: in signed(INPUT_RESOLUTION-1 downto 0);
+        data_out: out signed(OUTPUT_RESOLUTION-1 downto 0);
         en: in std_logic;
         start: in std_logic;
         reset: in std_logic
@@ -41,7 +44,8 @@ component mixer
     Port (
         data_in : in signed(14 downto 0);
         ref_in : in signed(14 downto 0);
-        data_out : out signed(28 downto 0) 
+        data_out : out signed(28 downto 0);
+        clk : std_logic
     );
 end component;
 
@@ -52,15 +56,15 @@ end component;
   signal reset: std_logic;
   
   -- fir1
-  signal data_in: signed(7 downto 0);
+  signal data_in: signed(7 downto 0); -- also system in
 
   -- mixer
   signal fir1_to_mixer: signed(14 downto 0);
   signal ref_in: signed(14 downto 0);
   
-  
-  signal data_out: signed(28 downto 0);
-  
+  -- fir2
+  signal mixer_to_fir2: signed(28 downto 0);
+  signal data_out: signed(56 downto 0); -- also system out 
 
   constant clock_period: time := 20 ns;
   signal stop_the_clock: boolean;
@@ -79,7 +83,11 @@ end component;
 begin
 
   fir1: fir 
-  generic map (b0   => 8,
+  generic map (
+               INPUT_RESOLUTION => 8,
+               OUTPUT_RESOLUTION => 15,
+        
+               b0   => 8,
                b1   => -14,
                b2   => 3,
                b3   => 68,
@@ -98,7 +106,30 @@ begin
   mixer_in_phase: mixer
   port map (    data_in     => fir1_to_mixer,
                 ref_in      => ref_in,
-                data_out    => data_out );                      
+                data_out    => mixer_to_fir2,
+                clk => clk 
+                );
+                
+  fir2: fir 
+  generic map (
+               INPUT_RESOLUTION => 29,
+               OUTPUT_RESOLUTION => 57,
+                    
+               b0   => 8723754,
+               b1   => 29616455,
+               b2   => 45622067,
+               b3   => 59828855,
+               b4   => 59828855,
+               b5   => 45622067,
+               b6   => 29616455,
+               b7   => 8723754
+  )
+  port map (clk      => clk,
+            data_in  => mixer_to_fir2,
+            data_out => data_out,
+            en       => en,
+            start    => start,
+            reset    => reset );                      
 
   stimulus: process
   
@@ -141,30 +172,34 @@ begin
     file_open(fstatus, fptr_out, filename_out, write_mode);
     
     -- zdecydowaæ czy pierwsza iteracja oddzielnie, ¿eby zapisywane dane do pliku nie ³apa³y niepotrzebnego zera
+    wait for 10 ns;
     
     while (not endfile(fptr_in)) loop
-        wait for 20 ns;
-
-        -- local oscillator in
-        readline(fptr_lo, file_line);
-        read(file_line, lo_signal);
-        ref_in <= to_signed(lo_signal,15);
+    
+        wait for 10 ns;
         
         -- signal in
         readline(fptr_in, file_line);
         read(file_line, matlab_data);
         data_in <= to_signed(matlab_data,8);
         
+        wait for 10 ns;
+
+        -- local oscillator in -- MUST BE DELAYED (one clock cycle?) RELATIVE TO SIGNAL INPUT TO PROPERLY SYNCHRONISE WITH LATTER ELEMENTS
+        readline(fptr_lo, file_line);
+        read(file_line, lo_signal);
+        ref_in <= to_signed(lo_signal,15);
         
-        write(file_line, to_integer(data_out), left, 5);
+        
+        write(file_line, std_logic_vector(data_out), left, 5); 
         writeline(fptr_out, file_line);
     end loop;
     
     -- keep writing values till filter response zeroes
     for i in 0 to FILTER_ORDER loop
         wait for 20 ns;
-        data_in  <= (others => '0'); -- inside of loop not to write excessive code, it's just a testbench anyway
-        write(file_line, to_integer(data_out), left, 5);
+        data_in  <= (others => '0');
+        write(file_line, std_logic_vector(data_out), left, 5); 
         writeline(fptr_out, file_line);
     end loop;
     
