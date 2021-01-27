@@ -37,8 +37,8 @@ entity fir is
  generic (
      FILTER_ORDER : integer := 7;
      INPUT_RESOLUTION : integer := 8;
-     OUTPUT_RESOLUTION : integer := 15;
-     
+     OUTPUT_RESOLUTION : integer := 15; -- how to parametrise to INPUT_RESOLUTION*2-1 ?
+                                        -- maybe during component initialization in testbench?
      b0 : integer := 0;
      b1 : integer := 0;
      b2 : integer := 0;
@@ -47,6 +47,7 @@ entity fir is
      b5 : integer := 0;
      b6 : integer := 0;
      b7 : integer := 0
+     -- b8... etc : integer := 0, may pre-allocate more zero coefficients to increase flexibility
  );
  
  Port (
@@ -61,12 +62,11 @@ end fir;
 
 architecture Behavioral of fir is
 
-constant max_res: integer := (INPUT_RESOLUTION*2)-1; -- -2 = -1 bo uwzglêdnienie zera -1 bo mno¿enie znaków ale czoœ sie psuje wiemcz jedno '-1' pomijam
--- jednak totalnie Ÿle zrozumia³em obcinanie s³ów bitowych w kodzie U2
+constant max_res: integer := (INPUT_RESOLUTION*2)-1; -- need to think of proper formula for maximum resolution as due to summation of 8 samples into one signal there may be more than 1 overflow
+                                                     -- right now it has been set more or less experimentally
 
 type samples_reg is array (0 to FILTER_ORDER) of signed(INPUT_RESOLUTION-1 downto 0);
 type coeffs_reg is array (0 to FILTER_ORDER) of signed(INPUT_RESOLUTION-1 downto 0);
-
 
 begin
 
@@ -83,13 +83,7 @@ process(clk, reset)
                                     to_signed(b7,INPUT_RESOLUTION)
                                     );
     
-    variable data_processed: signed(max_res downto 0) := (others => '0'); -- problem: w tej linijce data_processed := data_processed + samples(j)*coeffs(j); czasem jest grubo przekraczany zakres i w sumie 
-    -- i w sumie maksymalny MSB jest p³ywaj¹cy, bo z tego co rozumiem to gdybym zsumowa³ same 1111 w data_processed to móg³bym dostaæ chyba nawet o tyle wiêksz¹ bitów liczbê ile wynosi filter order.
-    -- w ka¿dym razie coœ tu jest mocno nie tak i odbija siê na tym, ¿e jest taka linijka data_out <= data_processed(OUTPUT_RESOLUTION-1 downto 0); a nie z (max_res downto max_res-output_resolution+1)
-    -- trzeba sprawdzic czy arytmetyka sie nasyca czy co sie dzieje
-    -- jak dam (14 downto 0) to wychodz¹ gites liczby
-    -- jak dam (15 downto 1) (czyli tak jak powinno siê obcinaæ) to mi wychodz¹ liczby o po³owê mniejsze. A ZNAK JEST ZACHOWANY!
-    
+    variable data_processed: signed(max_res downto 0) := (others => '0');  
 
     -- signal s1 : signed(47 downto 0) := 48D"46137344123";
     

@@ -179,7 +179,8 @@ begin
   generic map(
             INPUT_RESOLUTION => 57,
             OUTPUT_RESOLUTION => 16,
-            DIVISION_FACTOR => "011111111111111111111111111111111111111111"
+            DIVISION_FACTOR => "011111111111111111111111111111111111111111" -- this is because integers are 32-bit limited. Need to think on some different way
+                                                                            -- actually, it's just division by power of 2. Shifting reg?
             )
   port map (data_in     => fir2_to_scaler,
             data_out    => data_out);
@@ -187,14 +188,14 @@ begin
   phase_shifter1: phase_shifter
   generic map(
             INPUT_RESOLUTION => 15,
-            SAMPLES_DELAY => 1
+            SAMPLES_DELAY => 2
             )
   port map(
             data_in => ref_in,
             data_out => phase_shifter_to_mixer_iq,
             clk => clk,
             reset => reset
-           );   
+           );
           
   mixer_iq: mixer
   port map (    data_in     => fir1_to_mixer,
@@ -238,7 +239,6 @@ begin
   
   
     -- file related
-    constant FILE_IN_BITS  : integer := 8;
     variable matlab_data   : integer;
     variable lo_signal   : integer;
 
@@ -247,8 +247,6 @@ begin
     variable file_line     : line;
   
   begin
-  
-    -- Put initialisation code here
 
     reset <= '1';
     en <= '0';
@@ -275,7 +273,6 @@ begin
     file_open(fstatus, fptr_out, filename_out, write_mode);
     file_open(fstatus, fptr_out_iq, filename_out_iq, write_mode);
     
-    -- zdecydowaæ czy pierwsza iteracja oddzielnie, ¿eby zapisywane dane do pliku nie ³apa³y niepotrzebnego zera
     wait for 10 ns;
     
     while (not endfile(fptr_in)) loop
@@ -320,7 +317,9 @@ begin
     wait for 60 ns;
     
     file_close(fptr_in);
+    file_close(fptr_lo);
     file_close(fptr_out);
+    file_close(fptr_out_iq);
 
 
     stop_the_clock <= true;
